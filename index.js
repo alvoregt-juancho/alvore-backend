@@ -29,11 +29,31 @@ const PORT = process.env.PORT || 3000;
 
 const app = express();
 
+
+
+/* =========================================
+   ALLOWED ORIGINS
+========================================= */
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://alvora.softwaredemolive.live",
+];
+
+/* =========================================
+   SERVER
+========================================= */
+
 const server = http.createServer(app);
+
+/* =========================================
+   SOCKET.IO CORS
+========================================= */
+
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   },
@@ -43,7 +63,16 @@ const io = new Server(server, {
 dbConnect();
 
 // Middlewares
-app.use(cors());
+app.use(
+  cors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
+
+app.options("*", cors());
 app.use(morgan("dev"));
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
