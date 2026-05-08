@@ -13,7 +13,7 @@ const { dbConnect } = require("./Config/dbConnect.js");
 const routes = require("./app.js");
 const { handleSocketConnection } = require("./Utills/SocketHelper.js");
 
-// __dirname automatically available in CommonJS
+// Load ENV
 dotenv.config({ path: path.join(__dirname, ".env") });
 
 console.log("🔑 Loaded ENV Vars:");
@@ -29,56 +29,144 @@ const PORT = process.env.PORT || 3000;
 
 const app = express();
 
+/* =========================================================
+   CORS CONFIG
+========================================================= */
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://alvora.softwaredemolive.live",
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (Postman/mobile apps/etc)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("❌ Not allowed by CORS"));
+    }
+  },
+
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+  ],
+
+  credentials: true,
+};
+
+/* =========================================================
+   APPLY CORS BEFORE EVERYTHING
+========================================================= */
+
+app.use(cors(corsOptions));
+
+// Handle Preflight Requests
+app.options("*", cors(corsOptions));
+
+/* =========================================================
+   OTHER MIDDLEWARES
+========================================================= */
+
+app.use(morgan("dev"));
+
+app.use(bodyParser.json({ limit: "50mb" }));
+
+app.use(
+  bodyParser.urlencoded({
+    limit: "50mb",
+    extended: true,
+  })
+);
+
+app.use(cookieParser());
+
+/* =========================================================
+   CREATE SERVER
+========================================================= */
+
 const server = http.createServer(app);
+
+/* =========================================================
+   SOCKET.IO CONFIG
+========================================================= */
+
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
   },
 });
 
-// DB Connect
+/* =========================================================
+   DATABASE CONNECTION
+========================================================= */
+
 dbConnect();
 
-// Middlewares
-app.use(cors());
-app.use(morgan("dev"));
-app.use(bodyParser.json({ limit: "50mb" }));
-app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
-app.use(cookieParser());
+/* =========================================================
+   SOCKET CONNECTION
+========================================================= */
 
-// Socket.IO
 handleSocketConnection(io);
 
+/* =========================================================
+   GLOBAL ERROR HANDLERS
+========================================================= */
+
 process.on("uncaughtException", (err) => {
-  console.error("Uncaught Exception:", err);
+  console.error("❌ Uncaught Exception:", err);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection:", reason);
+  console.error("❌ Unhandled Rejection:", reason);
 });
 
-// Test Route
+/* =========================================================
+   TEST ROUTE
+========================================================= */
+
 app.get("/", (req, res) => {
-  res.send("🚀 Alvore Backend is Working! 🎉");
+  res.send("🚀 Alvora Backend is Working! 🎉");
 });
 
-// API Routes
+/* =========================================================
+   API ROUTES
+========================================================= */
+
 app.use(routes);
 
-// Error Handler
+/* =========================================================
+   ERROR HANDLER
+========================================================= */
+
 app.use((err, req, res, next) => {
-  console.error('🔥 Server Error:', err.message);
+  console.error("🔥 Server Error:", err.message);
+
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? err : {}
+    message: err.message || "Internal Server Error",
+    error:
+      process.env.NODE_ENV === "development"
+        ? err
+        : {},
   });
 });
 
-// Start Server
+/* =========================================================
+   START SERVER
+========================================================= */
+
 server.listen(PORT, () => {
-  console.log(`✅ ChecklistManagement Server is running on port ${PORT} ❤❤❤❤`);
+  console.log(
+    `✅ ChecklistManagement Server is running on port ${PORT} ❤❤❤❤`
+  );
 });
