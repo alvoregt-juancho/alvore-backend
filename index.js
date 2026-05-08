@@ -13,40 +13,28 @@ const { dbConnect } = require("./Config/dbConnect.js");
 const routes = require("./app.js");
 const { handleSocketConnection } = require("./Utills/SocketHelper.js");
 
+// __dirname automatically available in CommonJS
 dotenv.config({ path: path.join(__dirname, ".env") });
+
+console.log("🔑 Loaded ENV Vars:");
+console.log("PORT:", process.env.PORT);
+console.log(
+  "MONGODB_URL:",
+  process.env.MONGODB_URL
+    ? process.env.MONGODB_URL.slice(0, 30) + "..."
+    : "❌ Not Found"
+);
 
 const PORT = process.env.PORT || 3000;
 
 const app = express();
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://alvora.softwaredemolive.live"
-];
-
-// CORS Middleware
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
-
 const server = http.createServer(app);
-
-// Socket.IO CORS
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: "*",
     methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   },
 });
@@ -55,6 +43,7 @@ const io = new Server(server, {
 dbConnect();
 
 // Middlewares
+app.use(cors());
 app.use(morgan("dev"));
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
@@ -67,7 +56,7 @@ process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);
 });
 
-process.on("unhandledRejection", (reason) => {
+process.on("unhandledRejection", (reason, promise) => {
   console.error("Unhandled Rejection:", reason);
 });
 
@@ -81,16 +70,15 @@ app.use(routes);
 
 // Error Handler
 app.use((err, req, res, next) => {
-  console.error("🔥 Server Error:", err.message);
-
+  console.error('🔥 Server Error:', err.message);
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || "Internal Server Error",
-    error: process.env.NODE_ENV === "development" ? err : {},
+    message: err.message || 'Internal Server Error',
+    error: process.env.NODE_ENV === 'development' ? err : {}
   });
 });
 
 // Start Server
 server.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ ChecklistManagement Server is running on port ${PORT} ❤❤❤❤`);
 });
